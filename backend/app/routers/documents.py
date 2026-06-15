@@ -6,10 +6,13 @@ from datetime import timedelta
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, status
 
+from app.core.config import settings
 from app.core.deps import DbSession
 from app.core.refs import new_reference
 from app.core.websocket import file_channel, manager
 from app.models.documents import DocumentType, File, FileUpdate
+from app.models.payment import Payment
+from app.models.queue import Institution
 from app.services import queue_service as qs  # reused for today()
 from app.schemas.documents import (
     DocumentTypeOut,
@@ -61,6 +64,24 @@ def submit_file(payload: FileCreate, db: DbSession):
             updated_by="system",
         )
     )
+
+    # If this document carries an official fee, open a pending payment for it.
+    if doc_type.fee and float(doc_type.fee) > 0:
+        institution = (
+            db.get(Institution, doc_type.institution_id) if doc_type.institution_id else None
+        )
+        db.add(
+            Payment(
+                user_phone=payload.citizen_phone,
+                purpose="document",
+                reference=file.reference_number,
+                description=f"{doc_type.name} fee",
+                amount=doc_type.fee,
+                payee_email=(institution.payee_email if institution else None) or settings.ifos_payee_email,
+                status="pending",
+            )
+        )
+
     db.commit()
     db.refresh(file)
     return file

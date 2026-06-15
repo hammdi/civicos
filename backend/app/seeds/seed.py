@@ -28,6 +28,7 @@ from app.models.admin import Admin
 from app.models.documents import DocumentType, File, FileUpdate
 from app.models.issues import Issue, IssueCategory, IssueUpdate, Upvote
 from app.models.market import Listing, Order, Review, Seller
+from app.models.payment import Payment
 from app.models.queue import Institution, Queue, QueueWindow, Ticket
 from app.models.user import User
 
@@ -111,14 +112,15 @@ INSTITUTIONS = [
     ("Sousse Tax Office", "tax_office", "Sousse", 13),
 ]
 
+# (name, institution_type, required_documents, avg_processing_days, fee)
 DOCUMENT_TYPES = [
-    ("National ID Card", "municipality", ["Birth certificate", "2 photos", "Old ID (if renewal)"], 10),
-    ("Passport", "municipality", ["National ID copy", "2 biometric photos", "Stamp fee receipt"], 21),
-    ("Birth Certificate", "municipality", ["Family book", "ID copy"], 3),
-    ("Residence Certificate", "municipality", ["ID copy", "Proof of address"], 2),
-    ("Criminal Record Extract (B3)", "court", ["ID copy", "Stamp fee receipt"], 5),
-    ("Tax Clearance Certificate", "tax_office", ["Tax ID", "Last declaration copy"], 7),
-    ("Parcel Collection Slip", "post", ["ID copy", "Tracking number"], 1),
+    ("National ID Card", "municipality", ["Birth certificate", "2 photos", "Old ID (if renewal)"], 10, 5.0),
+    ("Passport", "municipality", ["National ID copy", "2 biometric photos", "Stamp fee receipt"], 21, 60.0),
+    ("Birth Certificate", "municipality", ["Family book", "ID copy"], 3, 2.0),
+    ("Residence Certificate", "municipality", ["ID copy", "Proof of address"], 2, 1.0),
+    ("Criminal Record Extract (B3)", "court", ["ID copy", "Stamp fee receipt"], 5, 3.0),
+    ("Tax Clearance Certificate", "tax_office", ["Tax ID", "Last declaration copy"], 7, 10.0),
+    ("Parcel Collection Slip", "post", ["ID copy", "Tracking number"], 1, 0.0),
 ]
 
 ISSUE_CATEGORIES = [
@@ -162,6 +164,7 @@ def already_seeded(db: Session) -> bool:
 def seed_institutions(db: Session) -> list[Institution]:
     institutions = []
     for name, type_, city, wait in INSTITUTIONS:
+        slug = name.lower().replace(" ", "-").replace("'", "")
         inst = Institution(
             name=name,
             type=type_,
@@ -170,6 +173,8 @@ def seed_institutions(db: Session) -> list[Institution]:
             address=f"{rng.randint(1, 120)} Rue de la République, {city}",
             avg_wait_minutes=wait,
             is_active=True,
+            # IslamicFinanceOS wallet where this institution collects fees.
+            payee_email=f"pay+{slug}@civicos.gov",
         )
         db.add(inst)
         institutions.append(inst)
@@ -239,18 +244,50 @@ def seed_users(db: Session) -> None:
     )
 
 
+def seed_payments(db: Session) -> None:
+    """A couple of payments for the primary demo user (one paid, one pending)."""
+    now = datetime.now(timezone.utc)
+    db.add(
+        Payment(
+            user_phone=DEMO_USER_PHONE,
+            purpose="document",
+            reference="DEMO-PASSPORT",
+            description="Passport fee",
+            amount=60.0,
+            status="paid",
+            provider="mock",
+            provider_ref="MOCK-SEEDED01",
+            payee_email="pay+tunis-city-hall@civicos.gov",
+            paid_at=now - timedelta(days=2),
+        )
+    )
+    db.add(
+        Payment(
+            user_phone=DEMO_USER_PHONE,
+            purpose="document",
+            reference="DEMO-IDCARD",
+            description="National ID Card fee",
+            amount=5.0,
+            status="pending",
+            payee_email="pay+tunis-city-hall@civicos.gov",
+        )
+    )
+    logger.info("Seeded demo payments (1 paid, 1 pending)")
+
+
 def seed_document_types(db: Session, institutions: list[Institution]) -> list[DocumentType]:
     by_type: dict[str, Institution] = {}
     for inst in institutions:
         by_type.setdefault(inst.type, inst)
     doc_types = []
-    for name, inst_type, required, days in DOCUMENT_TYPES:
+    for name, inst_type, required, days, fee in DOCUMENT_TYPES:
         inst = by_type.get(inst_type)
         dt = DocumentType(
             name=name,
             institution_id=inst.id if inst else None,
             required_documents=required,
             avg_processing_days=days,
+            fee=fee,
         )
         db.add(dt)
         doc_types.append(dt)
@@ -518,6 +555,7 @@ def run() -> None:
         db.flush()
         seed_queues_and_tickets(db, institutions)
         seed_files(db, doc_types)
+        seed_payments(db)
         seed_market(db)
         seed_issues(db, categories)
         db.commit()

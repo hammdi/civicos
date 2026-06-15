@@ -18,6 +18,9 @@ class UserOut(ORMModel):
     city: str | None = None
     avatar_url: str | None = None
     is_verified: bool
+    national_id: str | None = None
+    identity_verified: bool = False
+    identity_verified_at: datetime | None = None
     created_at: datetime
 
 

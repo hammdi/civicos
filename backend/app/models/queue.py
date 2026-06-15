@@ -33,6 +33,8 @@ class Institution(Base, TimestampMixin):
     country: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     avg_wait_minutes: Mapped[int] = mapped_column(Integer, default=10, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # IslamicFinanceOS wallet where this institution collects fees.
+    payee_email: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     queues = relationship("Queue", back_populates="institution", cascade="all, delete-orphan")
 

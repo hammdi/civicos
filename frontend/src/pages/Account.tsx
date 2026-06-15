@@ -6,11 +6,15 @@ import {
   LogOut,
   ChevronRight,
   LogIn,
+  ShieldCheck,
+  BadgeCheck,
+  Wallet,
+  CreditCard,
   type LucideIcon,
 } from "lucide-react";
 
 import { api } from "../api/client";
-import type { MeOverview } from "../api/types";
+import type { MeOverview, Payment } from "../api/types";
 import { useAuth } from "../context/AuthContext";
 import { MODULE_ICONS } from "../lib/icons";
 import { formatDate, formatPrice } from "../lib/format";
@@ -186,6 +190,9 @@ export default function Account() {
           {t("account.signOut")}
         </button>
       </header>
+
+      {/* Verified identity (StateSync) */}
+      <IdentityCard />
 
       {/* Tabs */}
       <div className="mt-6 flex gap-1 rounded-2xl bg-slate-100 p-1">
@@ -370,6 +377,274 @@ function OverviewTab({
           </Row>
         ))}
       </Section>
+
+      {/* My payments */}
+      <PaymentsSection initial={overview?.payments ?? []} />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Identity verification (StateSync)                                  */
+/* ------------------------------------------------------------------ */
+
+function IdentityCard() {
+  const { t } = useTranslation();
+  const { user, refresh } = useAuth();
+  const [cin, setCin] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  if (!user) return null;
+  const verified = user.identity_verified;
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setErr(null);
+    setMsg(null);
+    setBusy(true);
+    try {
+      const res = await api.identity.verify(cin.trim());
+      if (res.identity_verified) {
+        await refresh();
+        setMsg(t("identity.verifiedAs", { name: res.official_name || user.name }));
+      } else if (!res.statesync_available) {
+        setErr(t("identity.unavailable"));
+      } else {
+        setErr(t("identity.notFound"));
+      }
+    } catch {
+      setErr(t("common.error"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="card mt-6 p-6">
+      <div className="flex items-center gap-3">
+        <span
+          className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${
+            verified ? "bg-civic-green/10 text-civic-greenDark" : "bg-navy/10 text-navy"
+          }`}
+        >
+          <ShieldCheck className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <h3 className="text-base font-semibold text-navy">{t("identity.title")}</h3>
+          <p className="text-sm text-slate-500">{t("identity.subtitle")}</p>
+        </div>
+        {verified && (
+          <span className="badge ms-auto inline-flex items-center gap-1 bg-civic-green/10 text-civic-greenDark">
+            <BadgeCheck className="h-3.5 w-3.5" />
+            {t("identity.verified")}
+          </span>
+        )}
+      </div>
+
+      {verified ? (
+        <p className="mt-4 rounded-xl bg-civic-green/5 px-4 py-3 text-sm text-slate-600">
+          {t("identity.verifiedAs", { name: user.name })} · CIN {user.national_id}
+          {user.identity_verified_at &&
+            ` · ${t("identity.verifiedOn", { date: formatDate(user.identity_verified_at) })}`}
+        </p>
+      ) : (
+        <form onSubmit={submit} className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="flex-1">
+            <label className="label" htmlFor="cin">
+              {t("identity.nationalId")}
+            </label>
+            <input
+              id="cin"
+              className="input"
+              value={cin}
+              onChange={(e) => setCin(e.target.value)}
+              placeholder={t("identity.placeholder")}
+              required
+            />
+          </div>
+          <button type="submit" className="btn-primary" disabled={busy || !cin.trim()}>
+            {busy ? t("identity.verifying") : t("identity.verifyBtn")}
+          </button>
+        </form>
+      )}
+
+      {err && <p className="mt-3 text-sm text-reports">{err}</p>}
+      {msg && (
+        <p className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-civic-greenDark">
+          <CheckCircle2 className="h-4 w-4" />
+          {msg}
+        </p>
+      )}
+      <p className="mt-3 text-xs text-slate-400">{t("identity.poweredBy")}</p>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Payments (IslamicFinanceOS)                                        */
+/* ------------------------------------------------------------------ */
+
+const PAY_COLORS: Record<string, string> = {
+  paid: "bg-green-100 text-green-800",
+  pending: "bg-amber-100 text-amber-800",
+  failed: "bg-red-100 text-red-700",
+  refunded: "bg-slate-200 text-slate-700",
+};
+
+function PaymentBadge({ status }: { status: string }) {
+  const { t } = useTranslation();
+  return (
+    <span className={`badge ${PAY_COLORS[status] || "bg-slate-100 text-slate-700"}`}>
+      {t(`payments.${status}`, { defaultValue: status })}
+    </span>
+  );
+}
+
+function PaymentsSection({ initial }: { initial: Payment[] }) {
+  const { t } = useTranslation();
+  const [payments, setPayments] = useState<Payment[]>(initial);
+
+  useEffect(() => setPayments(initial), [initial]);
+
+  return (
+    <section className="card p-5 sm:p-6">
+      <div className="mb-4 flex items-center gap-3">
+        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-civic-green/10 text-civic-greenDark">
+          <Wallet className="h-5 w-5" />
+        </span>
+        <h3 className="text-base font-semibold text-navy">{t("account.myPayments")}</h3>
+      </div>
+
+      {payments.length === 0 ? (
+        <p className="rounded-xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+          {t("account.nothingPayments")}
+        </p>
+      ) : (
+        <div className="flex flex-col divide-y divide-slate-100">
+          {payments.map((p) => (
+            <PaymentRow
+              key={p.id}
+              payment={p}
+              onPaid={(updated) =>
+                setPayments((ps) => ps.map((x) => (x.id === updated.id ? updated : x)))
+              }
+            />
+          ))}
+        </div>
+      )}
+      <p className="mt-3 text-xs text-slate-400">{t("payments.poweredBy")}</p>
+    </section>
+  );
+}
+
+function PaymentRow({ payment, onPaid }: { payment: Payment; onPaid: (p: Payment) => void }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [method, setMethod] = useState<"mock" | "ifos">("mock");
+  const [email, setEmail] = useState("");
+  const [pwd, setPwd] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const pay = async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await api.payments.pay(payment.id, {
+        method,
+        ifos_email: method === "ifos" ? email : undefined,
+        ifos_password: method === "ifos" ? pwd : undefined,
+      });
+      onPaid(res);
+      setOpen(false);
+    } catch (e) {
+      const detail = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setErr(detail || t("payments.error"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="py-3 first:pt-0 last:pb-0">
+      <div className="flex items-center gap-3">
+        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+          <CreditCard className="h-4 w-4" />
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-navy">
+            {payment.description || payment.purpose}
+          </p>
+          <p className="text-xs text-slate-400">
+            {formatPrice(payment.amount, payment.currency)}
+            {payment.paid_at && ` · ${t("payments.paidOn", { date: formatDate(payment.paid_at) })}`}
+          </p>
+        </div>
+        <span className="ms-auto flex items-center gap-2">
+          <PaymentBadge status={payment.status} />
+          {payment.status === "pending" && (
+            <button
+              type="button"
+              onClick={() => setOpen((o) => !o)}
+              className="btn-green rounded-lg px-3 py-1 text-xs"
+            >
+              {t("payments.payNow")}
+            </button>
+          )}
+        </span>
+      </div>
+
+      {open && payment.status === "pending" && (
+        <div className="mt-3 rounded-xl bg-slate-50 p-3">
+          <div className="flex flex-wrap gap-2">
+            {(["mock", "ifos"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMethod(m)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                  method === m
+                    ? "bg-navy text-white"
+                    : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                {m === "mock" ? t("payments.payMock") : t("payments.payIfos")}
+              </button>
+            ))}
+          </div>
+
+          {method === "ifos" && (
+            <div className="mt-3 space-y-2">
+              <input
+                className="input"
+                placeholder={t("payments.ifosEmail")}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <input
+                className="input"
+                type="password"
+                placeholder={t("payments.ifosPassword")}
+                value={pwd}
+                onChange={(e) => setPwd(e.target.value)}
+              />
+            </div>
+          )}
+
+          {err && <p className="mt-2 text-sm text-reports">{err}</p>}
+
+          <div className="mt-3 flex gap-2">
+            <button type="button" className="btn-green" disabled={busy} onClick={pay}>
+              {busy ? t("payments.paying") : t("payments.confirm")}
+            </button>
+            <button type="button" className="btn-ghost" onClick={() => setOpen(false)}>
+              {t("payments.cancel")}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

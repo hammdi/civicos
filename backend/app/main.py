@@ -24,10 +24,12 @@ from app.routers import (
     auth,
     documents,
     documents_admin,
+    identity,
     issues,
     issues_admin,
     market,
     me,
+    payments,
     queue,
     queue_admin,
 )
@@ -99,6 +101,10 @@ def health():
 app.include_router(auth.router)          # /auth/register, /auth/verify-otp, /auth/me
 app.include_router(auth.admin_router)    # /admin/login
 app.include_router(me.router)            # /me/overview (personal dashboard)
+
+# --- Ecosystem integrations -------------------------------------------------
+app.include_router(identity.router)      # /identity/* — StateSync verification
+app.include_router(payments.router)      # /payments/* — IslamicFinanceOS settlement
 
 # --- Module 1: Queue --------------------------------------------------------
 app.include_router(queue.router)         # /institutions, /tickets, /ws/queue/...

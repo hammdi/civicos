@@ -57,6 +57,12 @@ services:
       TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
       TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
       TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
+      # Ecosystem integrations (reach host-published services from the container).
+      STATESYNC_BASE_URL: ${STATESYNC_BASE_URL:-http://host.docker.internal:8080}
+      IFOS_BASE_URL: ${IFOS_BASE_URL:-http://host.docker.internal:8000}
+    # Lets the container reach host-published services (StateSync, IFOS) on Linux.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # Free host port (8000 is taken by IslamicFinanceOS, 8001-8012/8080 by StateSync).
     ports:
       - "${BACKEND_PORT:-8100}:8000"

@@ -9,10 +9,12 @@ import type {
   Issue,
   IssueCategory,
   IssueStats,
+  IdentityStatus,
   Listing,
   ListingDetail,
   MeOverview,
   Order,
+  Payment,
   QueueStats,
   Review,
   SellerProfile,
@@ -181,6 +183,27 @@ export const api = {
   },
   sellers: {
     profile: (phone: string) => unwrap<SellerProfile>(http.get(`/sellers/${encodeURIComponent(phone)}`)),
+  },
+
+  // Ecosystem — Identity (StateSync)
+  identity: {
+    status: () => unwrap<IdentityStatus>(http.get("/identity/status")),
+    verify: (national_id: string) =>
+      unwrap<IdentityStatus>(http.post("/identity/verify", { national_id })),
+    verifyDocument: (reference: string) =>
+      unwrap<{ valid: boolean; available: boolean; message: string }>(
+        http.get(`/identity/document/${reference}`)
+      ),
+  },
+
+  // Ecosystem — Payments (IslamicFinanceOS)
+  payments: {
+    list: () => unwrap<Payment[]>(http.get("/payments")),
+    create: (body: { purpose?: string; reference?: string; description?: string; amount: number; payee_email?: string }) =>
+      unwrap<Payment>(http.post("/payments", body)),
+    get: (id: number) => unwrap<Payment>(http.get(`/payments/${id}`)),
+    pay: (id: number, body: { method: "ifos" | "mock"; ifos_email?: string; ifos_password?: string }) =>
+      unwrap<Payment>(http.post(`/payments/${id}/pay`, body)),
   },
 
   // Module 4 — Issues

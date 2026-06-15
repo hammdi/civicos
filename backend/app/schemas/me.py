@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from app.schemas.auth import UserOut
 from app.schemas.documents import FileOut
+from app.schemas.ecosystem import PaymentOut
 from app.schemas.issues import IssueOut
 from app.schemas.market import ListingOut
 from app.schemas.queue import TicketOut
@@ -16,6 +17,7 @@ class OverviewCounts(BaseModel):
     documents: int
     listings: int
     issues: int
+    payments: int = 0
 
 
 class MeOverview(BaseModel):
@@ -25,3 +27,4 @@ class MeOverview(BaseModel):
     documents: list[FileOut] = []
     listings: list[ListingOut] = []
     issues: list[IssueOut] = []
+    payments: list[PaymentOut] = []

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -24,6 +24,8 @@ class DocumentType(Base, TimestampMixin):
     # e.g. ["national ID copy", "2 photos", "birth certificate"]
     required_documents: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     avg_processing_days: Mapped[int] = mapped_column(Integer, default=7, nullable=False)
+    # Official fee for this document (0 = free). Collected via IslamicFinanceOS.
+    fee: Mapped[float] = mapped_column(Numeric(10, 2), default=0, nullable=False)
 
     institution = relationship("Institution", lazy="joined")
     files = relationship("File", back_populates="document_type")

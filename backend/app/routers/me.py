@@ -8,6 +8,7 @@ from app.core.deps import CurrentCitizen, DbSession
 from app.models.documents import File
 from app.models.issues import Issue
 from app.models.market import Listing, Seller
+from app.models.payment import Payment
 from app.models.queue import Ticket
 from app.models.user import User
 from app.schemas.me import MeOverview, OverviewCounts
@@ -48,6 +49,13 @@ def overview(db: DbSession, citizen: CurrentCitizen):
         .limit(25)
         .all()
     )
+    payments = (
+        db.query(Payment)
+        .filter(Payment.user_phone == phone)
+        .order_by(Payment.id.desc())
+        .limit(25)
+        .all()
+    )
 
     return MeOverview(
         user=user,
@@ -56,9 +64,11 @@ def overview(db: DbSession, citizen: CurrentCitizen):
             documents=len(files),
             listings=len(listings),
             issues=len(issues),
+            payments=len(payments),
         ),
         tickets=tickets,
         documents=files,
         listings=listings,
         issues=issues,
+        payments=payments,
     )

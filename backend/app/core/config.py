@@ -41,6 +41,19 @@ class Settings(BaseSettings):
     twilio_auth_token: str | None = None
     twilio_from_number: str | None = None
 
+    # --- Ecosystem integrations --------------------------------------------
+    # StateSync = national e-gov identity backbone (verify national ID / docs).
+    # IslamicFinanceOS = payment & settlement layer (wallet, zakat).
+    # From inside Docker, host services are reached via host.docker.internal.
+    statesync_base_url: str = "http://host.docker.internal:8080"
+    statesync_enabled: bool = True
+    ifos_base_url: str = "http://host.docker.internal:8000"
+    ifos_enabled: bool = True
+    # Where civic fees are collected (an IFOS wallet email). Per-institution
+    # payees override this in the DB; this is the platform default.
+    ifos_payee_email: str = "treasury@civicos.gov"
+    ecosystem_timeout_seconds: float = 6.0
+
     # --- CORS ---------------------------------------------------------------
     cors_origins: str = "*"  # comma separated, or * for any
 

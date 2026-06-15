@@ -9,7 +9,9 @@ email+password is offered as an optional convenience.
 
 from __future__ import annotations
 
-from sqlalchemy import Boolean, String
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -26,3 +28,10 @@ class User(Base, TimestampMixin):
     city: Mapped[str | None] = mapped_column(String(120), nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String(400), nullable=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # National identity, verified against StateSync (e-gov backbone).
+    national_id: Mapped[str | None] = mapped_column(String(40), index=True, nullable=True)
+    identity_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    identity_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

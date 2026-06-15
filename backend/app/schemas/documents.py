@@ -18,6 +18,7 @@ class DocumentTypeOut(ORMModel):
     institution_id: int | None = None
     required_documents: list[str] = []
     avg_processing_days: int
+    fee: float = 0
 
 
 class FileUpdateOut(ORMModel):

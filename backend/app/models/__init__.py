@@ -16,6 +16,7 @@ from app.models.documents import (  # noqa: F401
 )
 from app.models.market import Seller, Listing, Order, Review  # noqa: F401
 from app.models.issues import IssueCategory, Issue, IssueUpdate, Upvote  # noqa: F401
+from app.models.payment import Payment  # noqa: F401
 
 __all__ = [
     "Base",
@@ -37,4 +38,5 @@ __all__ = [
     "Issue",
     "IssueUpdate",
     "Upvote",
+    "Payment",
 ]

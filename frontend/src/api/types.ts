@@ -103,6 +103,7 @@ export interface DocumentType {
   institution_id: number | null;
   required_documents: string[];
   avg_processing_days: number;
+  fee: number;
 }
 
 export interface FileUpdate {
@@ -263,7 +264,35 @@ export interface User {
   city: string | null;
   avatar_url: string | null;
   is_verified: boolean;
+  national_id: string | null;
+  identity_verified: boolean;
+  identity_verified_at: string | null;
   created_at: string;
+}
+
+export interface IdentityStatus {
+  identity_verified: boolean;
+  national_id: string | null;
+  official_name?: string | null;
+  statesync_available: boolean;
+  message: string;
+  verified_at?: string | null;
+}
+
+export interface Payment {
+  id: number;
+  user_phone: string;
+  purpose: string;
+  reference: string | null;
+  description: string | null;
+  amount: number;
+  currency: string;
+  status: string;
+  provider: string | null;
+  provider_ref: string | null;
+  payee_email: string | null;
+  created_at: string;
+  paid_at: string | null;
 }
 
 export interface CitizenToken {
@@ -279,6 +308,7 @@ export interface OverviewCounts {
   documents: number;
   listings: number;
   issues: number;
+  payments: number;
 }
 
 export interface MeOverview {
@@ -288,6 +318,7 @@ export interface MeOverview {
   documents: FileRecord[];
   listings: Listing[];
   issues: Issue[];
+  payments: Payment[];
 }
 
 export interface AdminToken {
