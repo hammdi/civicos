@@ -1,0 +1,93 @@
+name: civicos
+
+services:
+  postgres:
+    # Aligned with the rest of the workspace (StateSync / IslamicFinanceOS all
+    # use postgres:15-alpine) so no extra image is pulled.
+    image: postgres:15-alpine
+    container_name: civicos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-civicos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-civicos}
+      POSTGRES_DB: ${POSTGRES_DB:-civicos}
+    volumes:
+      - civicos_pgdata:/var/lib/postgresql/data
+    # Not published to the host by default — the host's 5432 is already taken by
+    # another project and the backend reaches it over the internal network.
+    # Uncomment to inspect from the host on a free port:
+    # ports:
+    #   - "${POSTGRES_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-civicos} -d ${POSTGRES_DB:-civicos}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: civicos-redis
+    restart: unless-stopped
+    # Internal-only (host 6379 is already used by another project).
+    # Uncomment to expose on a free host port:
+    # ports:
+    #   - "${REDIS_PORT:-6380}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: civicos-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-civicos}:${POSTGRES_PASSWORD:-civicos}@postgres:5432/${POSTGRES_DB:-civicos}
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      OTP_DEBUG_RETURN: ${OTP_DEBUG_RETURN:-true}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
+    # Free host port (8000 is taken by IslamicFinanceOS, 8001-8012/8080 by StateSync).
+    ports:
+      - "${BACKEND_PORT:-8100}:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8100}
+    container_name: civicos-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    # Free host port (3000/3001 are taken by other projects).
+    ports:
+      - "${FRONTEND_PORT:-3100}:80"
+
+  # Optional reverse proxy that puts API + SPA on a single origin (port 8080).
+  # Enable with:  docker compose --profile proxy up --build
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: civicos-nginx
+    restart: unless-stopped
+    profiles: ["proxy"]
+    depends_on:
+      - backend
+      - frontend
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "${PROXY_PORT:-8090}:80"
+
+volumes:
+  civicos_pgdata:

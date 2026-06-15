@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-slate-50 text-slate-800 antialiased;
+  font-family: Inter, Cairo, system-ui, "Segoe UI", Tahoma, sans-serif;
+}
+
+/* Arabic gets the Cairo font for better legibility. */
+html[lang="ar"] body {
+  font-family: Cairo, Inter, system-ui, sans-serif;
+}
+
+/* --- Form control defaults -------------------------------------------------
+   Guarantee legible inputs everywhere. Without this, an input placed inside a
+   dark (text-white) section inherits white text on its default white field and
+   becomes invisible. Components that intentionally want a different look (e.g.
+   the language switcher) set their own utility classes, which override these. */
+@layer base {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  select,
+  textarea {
+    @apply bg-white text-slate-900;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    @apply text-slate-400;
+    opacity: 1;
+  }
+  /* Brand-colored checkboxes/radios + visible keyboard focus. */
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: #1b4f72;
+  }
+  :focus-visible {
+    outline: 2px solid #1b4f72;
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-navy text-white hover:bg-navy-700 focus:ring-navy;
+  }
+  .btn-green {
+    @apply btn bg-civic-green text-white hover:bg-civic-greenDark focus:ring-civic-green;
+  }
+  .btn-ghost {
+    @apply btn bg-white text-navy border border-slate-200 hover:bg-slate-50;
+  }
+  .card {
+    @apply rounded-2xl bg-white shadow-sm border border-slate-100;
+  }
+  .input {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-navy focus:ring-1 focus:ring-navy outline-none;
+  }
+  .label {
+    @apply block text-sm font-medium text-slate-600 mb-1;
+  }
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+  .container-page {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6 py-6;
+  }
+}
+
+/* Flip directional margins/icons sensibly under RTL where needed. */
+html[dir="rtl"] .rtl-flip {
+  transform: scaleX(-1);
+}
